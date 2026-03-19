@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.base import BaseEstimator, TransformerMixin
 
 ## --------------------------- Correlation heatmap for Target -------------------------------------------------
 
@@ -68,7 +69,7 @@ def relative_mean_angles(df: pd.DataFrame):
     df.drop(columns=all_original_angles, inplace=True)
     #df.drop(columns=all_original_angles + ['solar_zenith_rad'], inplace=True)
 
-    print(f"Reduced features. New columns added: {list(df.columns[-6:])}")
+    #print(f"Reduced features. New columns added: {list(df.columns[-6:])}")
     return df
 
 
@@ -94,7 +95,7 @@ def drop_features(df: pd.DataFrame, keywords: list):
     # Drop them all in one go
     df = df.drop(columns=to_drop)
     
-    print(f"Dropped {len(to_drop)} columns. New shape: {df.shape}")
+    #print(f"Dropped {len(to_drop)} columns. New shape: {df.shape}")
     return df
 
 # Usage:
@@ -125,6 +126,9 @@ def calculate_air_mass_factors(df: pd.DataFrame):
     # HCHO AMF (Using slant and tropospheric column density)
     df['AMF_HCHO_calc'] = df['L3_HCHO_HCHO_slant_column_number_density'] / df['L3_HCHO_tropospheric_HCHO_column_number_density']
     
+    # Critical: Replace any accidental infinities with 0
+    df = df.replace([np.inf, -np.inf], np.nan).fillna(0)
+
     return df
 
 ## --------------------------- Atmospheric Indices Calculation Function -------------------------------
@@ -148,6 +152,8 @@ def calculate_atmospheric_indices(df: pd.DataFrame):
     # Cloud pressure thickness (Base - Top)
     df['Cloud_Thickness_Pressure'] = df['L3_CLOUD_cloud_base_pressure'] - df['L3_CLOUD_cloud_top_pressure']
     
+    df = df.replace([np.inf, -np.inf], np.nan).fillna(0)
+
     return df
 
 ## --------------------------- Clod Fraction Reduction Calculation Function -------------------------------
@@ -224,3 +230,29 @@ def impute_full_pipeline(df, exclude_cols=['Place_ID', 'Date', 'target'], fit_st
         df_copy[col] = df_copy[col].fillna(global_med)
         
     return df_copy, fit_stats
+
+# --- 3. THE CUSTOM IMPUTER CLASS ---
+class GroupedMedianImputer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.group_medians = None
+        self.global_medians = None
+
+    def fit(self, X, y=None):
+        # Learn medians from THIS specific X_train only
+        self.group_medians = X.groupby('Place_ID').median(numeric_only=True)
+        self.global_medians = X.median(numeric_only=True)
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+        for col in self.group_medians.columns:
+            # Map group medians, then fallback to global
+            X[col] = X[col].fillna(X['Place_ID'].map(self.group_medians[col]))
+            X[col] = X[col].fillna(self.global_medians[col])
+        return X
+    
+
+    # ADD THIS METHOD TO FIX THE VALUEERROR
+    def set_output(self, transform=None):
+        """This allows the class to work with pipeline.set_output(transform='pandas')"""
+        return self
