@@ -1,6 +1,7 @@
-import pandas as pd
 import numpy as np
-
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 ## --------------------------- Correlation heatmap for Target -------------------------------------------------
 
@@ -18,7 +19,7 @@ def plot_target_correlation(data: pd.DataFrame, target_col: list, title="Feature
     correlations = correlations.sort_values(by=target_col, ascending=False)
     correlations = correlations.drop(target_col)
 
-    plt.figure(figsize=(5, 8))
+    plt.figure(figsize=(15, 18))
     sns.heatmap(correlations, annot=True, cmap='viridis',
                 vmin=-1, vmax=1, fmt=".2f", linewidths=0.5)
     plt.title(f"{title}: {target_col}")
@@ -28,19 +29,19 @@ def plot_target_correlation(data: pd.DataFrame, target_col: list, title="Feature
 
 ## ---------------------- Relative Mean Calculation (for 'azimuth' and 'zenith') Function ----------------------
 
-
 def relative_mean_angles(df: pd.DataFrame):
-    """
-    Aggregates redundant satellite observation angles and computes relative geometric features.
-    Calculating raw wise mean for each pollutants --> seperatley for 'azimuth' and 'zenith'
-    calculating the raltive 'azimuth' and 'zenith'
-    dropping the original features
 
-    Args --> df (pd.DataFrame): dataframe where to do Relative Mean Calculation for 'azimuth' and 'zenith'
-
-    Returns --> dataframe
     """
-    # 1. Map columns into their respective geometric categories
+        Aggregates redundant satellite observation angles and computes relative geometric features.
+        Calculating raw wise mean for each pollutants --> seperatley for 'azimuth' and 'zenith'
+        calculating the raltive 'azimuth' and 'zenith'
+        dropping the original features
+
+        Args --> df (pd.DataFrame): dataframe where to do Relative Mean Calculation for 'azimuth' and 'zenith'
+
+        Returns --> dataframe
+        """
+
     angle_map = {
         'solar_azimuth': [col for col in df.columns if 'solar_azimuth_angle' in col],
         'sensor_azimuth': [col for col in df.columns if 'sensor_azimuth_angle' in col],
@@ -48,22 +49,26 @@ def relative_mean_angles(df: pd.DataFrame):
         'sensor_zenith': [col for col in df.columns if 'sensor_zenith_angle' in col]
     }
 
-    # 2. Calculate the mean for each category (Dimensionality Reduction)
     mean_var = pd.DataFrame()
     for name, cols in angle_map.items():
         mean_var[f'mean_{name}'] = df[cols].mean(axis=1)
 
-    # 3. Compute Relative Azimuth (Horizontal Geometry)
     df['relative_azimuth'] = np.abs(mean_var['mean_solar_azimuth'] - mean_var['mean_sensor_azimuth'])
 
-    # 4. Compute Relative Zenith (Vertical Geometry / Path Length)
+
     df['relative_zenith'] = np.abs(mean_var['mean_solar_zenith'] - mean_var['mean_sensor_zenith'])
+
+    # Calculate Air Mass Factor Proxy (1 / cos(solar_zenith))
+    # This is physically significant for light path length through the atmosphere
+    #df['solar_zenith_rad'] = np.radians(df['mean_solar_zenith'])
+    #df['air_mass_factor_proxy'] = 1 / np.cos(df['solar_zenith_rad'])
 
     # 5. Clean up: Remove all the original redundant angle columns
     all_original_angles = [col for list_of_cols in angle_map.values() for col in list_of_cols]
     df.drop(columns=all_original_angles, inplace=True)
+    #df.drop(columns=all_original_angles + ['solar_zenith_rad'], inplace=True)
 
-    print(f"Reduced features. New columns added: ['relative_azimuth', 'relative_zenith']")
+    print(f"Reduced features. New columns added: {list(df.columns[-6:])}")
     return df
 
 
@@ -87,10 +92,10 @@ def drop_features(df: pd.DataFrame, keywords: list):
     ]
     
     # Drop them all in one go
-    df_cleaned = df.drop(columns=to_drop)
+    df = df.drop(columns=to_drop)
     
-    print(f"Dropped {len(to_drop)} columns. New shape: {df_cleaned.shape}")
-    return df_cleaned
+    print(f"Dropped {len(to_drop)} columns. New shape: {df.shape}")
+    return df
 
 # Usage:
 #drop_features = ['Place_ID X Date', 'ch4', 'target_']
@@ -143,4 +148,41 @@ def calculate_atmospheric_indices(df: pd.DataFrame):
     # Cloud pressure thickness (Base - Top)
     df['Cloud_Thickness_Pressure'] = df['L3_CLOUD_cloud_base_pressure'] - df['L3_CLOUD_cloud_top_pressure']
     
+    return df
+
+## --------------------------- Clod Fraction Reduction Calculation Function -------------------------------
+
+
+def cloud_fraction_reduction(df: pd.DataFrame):
+    """ Preventing feature co linearity by taking the mean of the cloud fraction
+
+    Args:
+        df (pd.DataFrame): original dataframe
+
+    Returns:
+        _type_: output dataframe with the old columns removed and the mean column added
+    """
+    cloud_frac_cols = [c for c in df.columns if 'cloud_fraction' in c]
+    df['mean_cloud_fraction'] = df[cloud_frac_cols].mean(axis=1)
+    df = df.drop(columns=cloud_frac_cols, axis = 1)
+
+    return df
+
+
+## --------------------------- Sensor Altitude Reduction Calculation Function -------------------------------
+
+
+def sensor_altitude_reduction(df: pd.DataFrame):
+    """ Preventing feature co linearity by taking the mean of the sensor altitudes
+
+    Args:
+        df (pd.DataFrame): original dataframe
+
+    Returns:
+        _type_: output dataframe with the old columns removed and the mean column added
+    """
+    sensor_altitude_cols = [c for c in df.columns if 'sensor_altitude' in c]
+    df['mean_sensor_altitude'] = df[sensor_altitude_cols].mean(axis=1)
+    df = df.drop(columns=sensor_altitude_cols, axis = 1)
+
     return df
