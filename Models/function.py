@@ -186,3 +186,41 @@ def sensor_altitude_reduction(df: pd.DataFrame):
     df = df.drop(columns=sensor_altitude_cols, axis = 1)
 
     return df
+
+
+##--------------------------- Imputation pipeline function----------------------------------
+def impute_full_pipeline(df, exclude_cols=['Place_ID', 'Date', 'target'], fit_stats=None):
+    df_copy = df.copy()
+    
+    # Select only numeric columns that aren't in the exclusion list
+    cols_to_fix = [c for c in df_copy.select_dtypes(include=[np.number]).columns 
+                   if c not in exclude_cols]
+    
+    # Initialize or use existing stats
+    if fit_stats is None:
+        fit_stats = {}
+        is_train = True
+    else:
+        is_train = False
+
+    for col in cols_to_fix:
+        # Treat 0 as missing data
+        df_copy[col] = df_copy[col].replace(0, np.nan)
+        
+        if is_train:
+            # FIT: Calculate stats from training data
+            global_med = df_copy[col].median()
+            group_lookup = df_copy.groupby('Place_ID')[col].mean().fillna(global_med)
+            fit_stats[col] = {'lookup': group_lookup, 'median': global_med}
+        else:
+            # TRANSFORM: Use provided stats
+            group_lookup = fit_stats[col]['lookup']
+            global_med = fit_stats[col]['median']
+
+        # Step 1: Impute using Grouped Mean (Mapping by Place_ID)
+        df_copy[col] = df_copy[col].fillna(df_copy['Place_ID'].map(group_lookup))
+        
+        # Step 2: Global Fallback for unknown IDs or fully empty groups
+        df_copy[col] = df_copy[col].fillna(global_med)
+        
+    return df_copy, fit_stats
