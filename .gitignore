@@ -1,1 +1,13 @@
+#file
 .venv
+__pycache__
+.gitingnore
+.python-version
+
+
+
+#folder
+Presentation/
+Models_Previous/
+Data/preprocessed
+Data/SampleSubmission.csv
