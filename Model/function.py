@@ -714,7 +714,7 @@ def plot_actual_vs_predicted(y_true, y_pred, model_name: str = 'Model', metrics:
     # Optional metrics annotation box
     if metrics is not None:
         annotation = '\n'.join(f'{k} = {v}' for k, v in metrics.items())
-        ax.text(0.05, 0.92, annotation,
+        ax.text(0.05, 0.85, annotation,
                 transform=ax.transAxes, fontsize=9, color='#333333',
                 verticalalignment='top',
                 bbox=dict(boxstyle='round,pad=0.4', facecolor='white',
