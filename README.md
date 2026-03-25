@@ -119,18 +119,18 @@ Three models were trained and compared, all using the **same shared preprocessin
 
 ```
 ├── Data/
-│   ├── Train.csv                   # Training data (~30,500 rows, 82 columns)
-│   └── Test.csv                    # Competition test set
+│   ├── Train.csv                        # Training data (~30,500 rows, 82 columns)
+│   └── Test.csv                         # Competition test set
 ├── Model/
-│   ├── Train.csv                   # Full EDA & feature engineering notebook
-│   ├── EDA_param_Pipeline.ipynb    # Full ML pipeline notebook (split → EDA → models)
-│   └── function.py                 # Shared utility functions & custom transformers 
-├── features_explanation.md         # Feature descriptions with units and value ranges
+│   ├── EDA_Feature-Engineering.ipynb    # Full EDA & feature engineering notebook
+│   ├── Project_JupyterNotebook.ipynb    # Full ML pipeline notebook (split → EDA → models)
+│   └── function.py                      # Shared utility functions & custom transformers 
+├── features_explanation.md              # Feature descriptions with units and value ranges
 ├── Images/
-│   ├── model_comparison.png        # RMSE & R² bar charts across all models
-│   ├── actual_vs_predicted.png     # Actual vs Predicted scatter for Stacking model
-│   └── redidual.png                # Residual plot
-└── README.md                       # This file
+│   ├── model_comparison.png             # RMSE & R² bar charts across all models
+│   ├── actual_vs_predicted.png          # Actual vs Predicted scatter for Stacking model
+│   └── redidual.png                     # Residual plot
+└── README.md                            # This file
 ```
 
 ---
